@@ -151,7 +151,11 @@
 
         const totalDaysInCycle = nextDateStr ? Math.max(1, Utils.daysBetween(lastDateStr, nextDateStr)) : 30;
         
-        const daysPassedRaw = Math.max(1, Utils.daysBetween(lastDateStr, todayStr) + 1);
+        // --- INÍCIO DA CORREÇÃO FINAL DA CONTAGEM DE DIAS ---
+        const daysDiff = Utils.daysBetween(lastDateStr, todayStr);
+        const daysPassedRaw = daysDiff <= 0 ? 1 : daysDiff;
+        // --- FIM DA CORREÇÃO FINAL DA CONTAGEM DE DIAS ---
+
         const daysPassed = Math.min(daysPassedRaw, totalDaysInCycle);
         
         const consumedKwh = (currentReading >= lastReading) ? currentReading - lastReading : 0;
@@ -241,7 +245,6 @@
     const renderHistoryTable = () => { const history = Utils.getStoredData(CONSTANTS.STORAGE_KEYS.HISTORY, []); if (history.length === 0) { DOM.historyContent.classList.add('hidden'); DOM.historyEmptyState.classList.remove('hidden'); return; } DOM.historyContent.classList.remove('hidden'); DOM.historyEmptyState.classList.add('hidden'); DOM.historyTableContainer.innerHTML = ''; const table = document.createElement('table'); table.className = 'history-table'; table.innerHTML = `<thead><tr><th>Mês</th><th>Valor</th><th>Consumo</th><th>Ações</th></tr></thead><tbody>${history.map(item => `<tr class="border-gray-700"><td data-label="Mês">${item.label.replace('-', '/')}</td><td data-label="Valor">${Utils.formatCurrency(item.value)}</td><td data-label="Consumo">${item.kwh} kWh</td><td><button class="action-btn edit-btn" data-id="${item.label}">Editar</button><button class="action-btn delete-btn" data-id="${item.label}">Excluir</button></td></tr>`).join('')}</tbody>`; DOM.historyTableContainer.appendChild(table); };
     const checkConsumptionAlert = () => { const history = Utils.getStoredData(CONSTANTS.STORAGE_KEYS.HISTORY, []); if (history.length < 1) { DOM.alertCard.classList.add('hidden'); return; } history.sort((a, b) => a.label.localeCompare(b.label)); const lastBill = history[history.length - 1]; if (state.currentPredictedBill > lastBill.value * CONSTANTS.CONSUMPTION_ALERT_THRESHOLD) { const percentageDiff = ((state.currentPredictedBill / lastBill.value) - 1) * 100; DOM.alertMessage.textContent = `Sua previsão está ${percentageDiff.toFixed(0)}% maior que sua última fatura (${Utils.formatCurrency(lastBill.value)}).`; DOM.alertCard.classList.remove('hidden'); } else { DOM.alertCard.classList.add('hidden'); } };
     
-    // FUNÇÃO COMPARATIVO CORRIGIDA
     const updateDashboardComparisons = () => {
         const history = Utils.getStoredData(CONSTANTS.STORAGE_KEYS.HISTORY, []);
         history.sort((a, b) => a.label.localeCompare(b.label));
