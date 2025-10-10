@@ -128,31 +128,36 @@
 };
     
     const calculate = (isInitialLoad = false) => {
-        if (!isInitialLoad && !validateInputs()) return;
-        const lastDateStr = DOM.lastReadingDateEl.value, nextDateStr = DOM.nextReadingDateEl.value, lastReadingVal = DOM.lastReadingValueEl.value, currentReadingVal = DOM.currentReadingValueEl.value, kwhPriceVal = DOM.kwhPriceEl.value;
-        if (!lastDateStr || !lastReadingVal || !kwhPriceVal) { updateUI(0, 0, 0, 0, 0, 0); return; }
+    if (!isInitialLoad && !validateInputs()) return;
+    const lastDateStr = DOM.lastReadingDateEl.value, nextDateStr = DOM.nextReadingDateEl.value, lastReadingVal = DOM.lastReadingValueEl.value, currentReadingVal = DOM.currentReadingValueEl.value, kwhPriceVal = DOM.kwhPriceEl.value;
+    if (!lastDateStr || !lastReadingVal || !kwhPriceVal) { updateUI(0, 0, 0, 0, 0, 0); return; }
 
-        const lastReading = parseFloat(lastReadingVal), currentReading = parseFloat(currentReadingVal), kwhPrice = parseFloat(kwhPriceVal);
-        const todayStr = new Date().toISOString().split('T')[0];
+    const lastReading = parseFloat(lastReadingVal), currentReading = parseFloat(currentReadingVal), kwhPrice = parseFloat(kwhPriceVal);
+    const todayStr = new Date().toISOString().split('T')[0];
 
-        const totalDaysInCycle = nextDateStr ? Math.max(1, Utils.daysBetween(lastDateStr, nextDateStr)) : 30;
-        const daysPassed = Math.max(1, Utils.daysBetween(lastDateStr, todayStr) + 1);
-        
-        const consumedKwh = (currentReading >= lastReading) ? currentReading - lastReading : 0;
-        const currentBill = consumedKwh * kwhPrice;
-        const dailyAvgKwh = (consumedKwh > 0 && daysPassed > 0) ? consumedKwh / daysPassed : 0;
-        const predictedKwh = dailyAvgKwh * totalDaysInCycle;
-        const predictedBill = predictedKwh * kwhPrice;
-        const daysLeft = Math.max(0, totalDaysInCycle - daysPassed);
-        
-        state.currentPredictedBill = predictedBill;
-        state.currentPartialBill = currentBill;
-        
-        updateUI(currentBill, predictedBill, dailyAvgKwh, daysLeft, currentReading || lastReading, predictedKwh);
-        checkConsumptionAlert();
-        updateDashboardComparisons();
-        updateGoalCard(consumedKwh);
-    };
+    const totalDaysInCycle = nextDateStr ? Math.max(1, Utils.daysBetween(lastDateStr, nextDateStr)) : 30;
+    
+    // --- INÍCIO DA CORREÇÃO ---
+    // Garante que os 'dias passados' para o cálculo da média não ultrapassem o total de dias do ciclo.
+    const daysPassedRaw = Math.max(1, Utils.daysBetween(lastDateStr, todayStr) + 1);
+    const daysPassed = Math.min(daysPassedRaw, totalDaysInCycle);
+    // --- FIM DA CORREÇÃO ---
+    
+    const consumedKwh = (currentReading >= lastReading) ? currentReading - lastReading : 0;
+    const currentBill = consumedKwh * kwhPrice;
+    const dailyAvgKwh = (consumedKwh > 0 && daysPassed > 0) ? consumedKwh / daysPassed : 0;
+    const predictedKwh = dailyAvgKwh * totalDaysInCycle;
+    const predictedBill = predictedKwh * kwhPrice;
+    const daysLeft = Math.max(0, totalDaysInCycle - daysPassedRaw);
+    
+    state.currentPredictedBill = predictedBill;
+    state.currentPartialBill = currentBill;
+    
+    updateUI(currentBill, predictedBill, dailyAvgKwh, daysLeft, currentReading || lastReading, predictedKwh);
+    checkConsumptionAlert();
+    updateDashboardComparisons();
+    updateGoalCard(consumedKwh);
+};
 
     const loadInitialData = () => { const savedInputs = Utils.getStoredData(CONSTANTS.STORAGE_KEYS.INPUTS, {}); DOM.lastReadingDateEl.value = savedInputs.lastReadingDate || ''; DOM.nextReadingDateEl.value = savedInputs.nextReadingDate || ''; DOM.lastReadingValueEl.value = savedInputs.lastReadingValue || ''; DOM.currentReadingValueEl.value = savedInputs.currentReadingValue || ''; DOM.kwhPriceEl.value = savedInputs.kwhPrice || ''; DOM.goalInput.value = savedInputs.goal || ''; renderAllHistory(); const lastView = Utils.getStoredData(CONSTANTS.STORAGE_KEYS.LAST_VIEW, 'input-view'); const canShowDashboard = DOM.lastReadingDateEl.value && DOM.lastReadingValueEl.value && DOM.kwhPriceEl.value; if (lastView !== 'input-view' && canShowDashboard) { calculate(true); DOM.inputView.classList.add('hidden'); DOM.bottomNav.classList.remove('hidden'); navigateTo(lastView); } else { switchView('input'); } };
     const saveInputData = (isDailyUpdate = false) => { const inputs = Utils.getStoredData(CONSTANTS.STORAGE_KEYS.INPUTS, {}); const inputData = { lastReadingDate: DOM.lastReadingDateEl.value, nextReadingDate: DOM.nextReadingDateEl.value, lastReadingValue: DOM.lastReadingValueEl.value, currentReadingValue: DOM.currentReadingValueEl.value, kwhPrice: DOM.kwhPriceEl.value, goal: DOM.goalInput.value }; if (isDailyUpdate && DOM.currentReadingValueEl.value) { inputData.currentReadingTimestamp = new Date().toISOString(); } else { inputData.currentReadingTimestamp = inputs.currentReadingTimestamp || null; } Utils.setStoredData(CONSTANTS.STORAGE_KEYS.INPUTS, inputData); };
