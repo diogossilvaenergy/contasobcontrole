@@ -290,8 +290,48 @@
         DOM.calculateBtn.addEventListener('click', () => { if (validateInputs()) { saveInputData(true); calculate(); switchView('dashboard'); } else { DOM.inputCard.classList.add('shake-error'); setTimeout(() => DOM.inputCard.classList.remove('shake-error'), 500); } });
         DOM.editDataBtn.addEventListener('click', () => switchView('input'));
         DOM.dailyUpdateValueEl.addEventListener('input', () => { DOM.currentReadingValueEl.value = DOM.dailyUpdateValueEl.value; saveInputData(true); calculate(true); });
-        [DOM.goalInput, DOM.lastReadingDateEl, DOM.nextReadingDateEl, DOM.lastReadingValueEl, DOM.kwhPriceEl].forEach(el => el.addEventListener('input', () => saveInputData(false)));
-        DOM.saveBtn.addEventListener('click', () => { const lastDate = new Date(DOM.lastReadingDateEl.value + 'T00:00:00'); const label = (lastDate.getFullYear() + '-' + ("0" + (lastDate.getMonth() + 1)).slice(-2)); const saveAction = () => { const history = Utils.getStoredData(CONSTANTS.STORAGE_KEYS.HISTORY, []); const finalReading = parseFloat(DOM.currentReadingValueEl.value); const lastReading = parseFloat(DOM.lastReadingValueEl.value); const kwhPrice = parseFloat(DOM.kwhPriceEl.value); const totalValue = (finalReading - lastReading) * kwhPrice; const totalKwh = finalReading - lastReading; const newItem = { label, value: totalValue, kwh: parseFloat(totalKwh.toFixed(2)) }; const existingIndex = history.findIndex(item => item.label === label); if (existingIndex > -1) { history[existingIndex] = newItem; } else { history.push(newItem); } Utils.setStoredData(CONSTANTS.STORAGE_KEYS.HISTORY, history); const newLastReadingDate = DOM.nextReadingDateEl.value; const newNextReadingDate = new Date(newLastReadingDate + 'T00:00:00'); newNextReadingDate.setMonth(newNextReadingDate.getMonth() + 1); DOM.lastReadingDateEl.value = newLastReadingDate; DOM.nextReadingDateEl.value = newNextReadingDate.toISOString().split('T')[0]; DOM.lastReadingValueEl.value = finalReading; DOM.currentReadingValueEl.value = ''; saveInputData(true); switchView('input'); showNotification(`Fatura de ${label.replace(/-/g, '/')} salva!`); }; const history = Utils.getStoredData(CONSTANTS.STORAGE_KEYS.HISTORY, []); const existingIndex = history.findIndex(item => item.label === label); if (existingIndex > -1) { showConfirm(`Já existe um registro para ${label.replace(/-/g, '/')}. Deseja sobrescrevê-lo?`, saveAction); } else { saveAction(); } });
+        DOM.goalInput, DOM.lastReadingDateEl, DOM.nextReadingDateEl, DOM.lastReadingValueEl, DOM.kwhPriceEl].forEach(el => el.addEventListener('input', () => saveInputData(false)));
+        DOM.saveBtn.addEventListener('click', () => {
+    // --- ALTERAÇÃO AQUI ---
+    // Agora usa a data de fechamento (próxima leitura) para nomear a fatura.
+    const closingDate = new Date(DOM.nextReadingDateEl.value + 'T00:00:00');
+    const label = (closingDate.getFullYear() + '-' + ("0" + (closingDate.getMonth() + 1)).slice(-2));
+    // --- FIM DA ALTERAÇÃO ---
+
+    const saveAction = () => {
+        const history = Utils.getStoredData(CONSTANTS.STORAGE_KEYS.HISTORY, []);
+        const finalReading = parseFloat(DOM.currentReadingValueEl.value);
+        const lastReading = parseFloat(DOM.lastReadingValueEl.value);
+        const kwhPrice = parseFloat(DOM.kwhPriceEl.value);
+        const totalValue = (finalReading - lastReading) * kwhPrice;
+        const totalKwh = finalReading - lastReading;
+        const newItem = { label, value: totalValue, kwh: parseFloat(totalKwh.toFixed(2)) };
+        const existingIndex = history.findIndex(item => item.label === label);
+        if (existingIndex > -1) {
+            history[existingIndex] = newItem;
+        } else {
+            history.push(newItem);
+        }
+        Utils.setStoredData(CONSTANTS.STORAGE_KEYS.HISTORY, history);
+        const newLastReadingDate = DOM.nextReadingDateEl.value;
+        const newNextReadingDate = new Date(newLastReadingDate + 'T00:00:00');
+        newNextReadingDate.setMonth(newNextReadingDate.getMonth() + 1);
+        DOM.lastReadingDateEl.value = newLastReadingDate;
+        DOM.nextReadingDateEl.value = newNextReadingDate.toISOString().split('T')[0];
+        DOM.lastReadingValueEl.value = finalReading;
+        DOM.currentReadingValueEl.value = '';
+        saveInputData(true);
+        switchView('input');
+        showNotification(`Fatura de ${label.replace(/-/g, '/')} salva!`);
+    };
+    const history = Utils.getStoredData(CONSTANTS.STORAGE_KEYS.HISTORY, []);
+    const existingIndex = history.findIndex(item => item.label === label);
+    if (existingIndex > -1) {
+        showConfirm(`Já existe um registro para ${label.replace(/-/g, '/')}. Deseja sobrescrevê-lo?`, saveAction);
+    } else {
+        saveAction();
+    }
+});
         DOM.clearHistoryBtn.addEventListener('click', (e) => showConfirm('Tem certeza que deseja apagar todo o histórico?', () => { Utils.setStoredData(CONSTANTS.STORAGE_KEYS.HISTORY, []); renderAllHistory(); checkConsumptionAlert(); updateDashboardComparisons(); showNotification('Histórico apagado.', true); }, e.target));
         DOM.addPastBillBtn.addEventListener('click', (e) => { resetPastBillModal(); openModal(DOM.pastBillModal, e.target); });
         DOM.addFirstBillBtn.addEventListener('click', (e) => { resetPastBillModal(); openModal(DOM.pastBillModal, e.target); });
