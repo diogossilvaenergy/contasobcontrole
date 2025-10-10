@@ -94,7 +94,6 @@
     const showInfoModal = (infoKey) => { let title = '', text = ''; const inputs = Utils.getStoredData(CONSTANTS.STORAGE_KEYS.INPUTS, {}); switch (infoKey) { case 'previsao': title = "Como a Previsão é Calculada?"; text = `A previsão é uma estimativa do valor total da sua fatura.\n\nÉ calculada multiplicando seu Consumo Médio Diário (${DOM.dailyAvgEl.textContent} kWh) pelo total de dias no seu ciclo de faturamento.`; break; case 'meta': title = "Acompanhamento da Meta"; text = `Esta barra compara seu Gasto Parcial atual com a meta de ${Utils.formatCurrency(parseFloat(inputs.goal) || 0)} que você definiu.\n\nA cor muda para te alertar: Verde (seguro), Amarelo (atenção, >90%) e Vermelho (meta estourada!).`; break; case 'fatura_parcial': title = "O que é a Fatura Parcial?"; text = `Este é o valor gasto desde o início do ciclo (${new Date(inputs.lastReadingDate + 'T00:00:00').toLocaleDateString('pt-BR')}) até a data da sua última leitura registrada.`; break; case 'ultima_leitura': title = "Última Leitura Registrada"; let dateText = "Ainda não registrada."; if (inputs.currentReadingTimestamp) { dateText = `Registrado em: ${new Date(inputs.currentReadingTimestamp).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit', year: 'numeric'})}`; } text = `Este é o último valor do medidor (${DOM.lastRegisteredReading.textContent}) que você inseriu no aplicativo.\n\n${dateText}`; break; case 'media_diaria': title = "Como a Média Diária é Calculada?"; text = "Calculamos o total de kWh consumidos até agora e dividimos pelo número de dias que se passaram desde o início do ciclo."; break; case 'dias_restantes': title = "Dias Restantes no Ciclo"; text = `Este é o número de dias que faltam até a data da sua próxima leitura, programada para ${new Date(inputs.nextReadingDate + 'T00:00:00').toLocaleDateString('pt-BR')}.`; break; } if (title) { DOM.infoModalTitle.textContent = title; DOM.infoModalText.textContent = text; openModal(DOM.infoModal); } };
     const navigateTo = (viewId) => { [DOM.dashboardView, DOM.historyView].forEach(v => v.classList.add('hidden')); document.getElementById(viewId).classList.remove('hidden'); document.querySelectorAll('#bottom-nav .nav-btn').forEach(btn => { btn.classList.toggle('active', btn.dataset.view === viewId); }); Utils.setStoredData(CONSTANTS.STORAGE_KEYS.LAST_VIEW, viewId); };
     
-    // FUNÇÃO CORRIGIDA
     const switchView = (viewName) => { 
         if (viewName === 'dashboard') { 
             DOM.inputView.classList.add('hidden'); 
@@ -105,7 +104,7 @@
             DOM.inputView.classList.remove('hidden'); 
             DOM.dashboardView.classList.add('hidden'); 
             DOM.historyView.classList.add('hidden'); 
-            DOM.bottomNav.classList.add('hidden'); // Correção aqui
+            DOM.bottomNav.classList.add('hidden');
             Utils.setStoredData(CONSTANTS.STORAGE_KEYS.LAST_VIEW, 'input-view'); 
         } 
     };
@@ -142,7 +141,6 @@
     }
 };
     
-    // FUNÇÃO COM O AJUSTE DO CÁLCULO DA PREVISÃO
     const calculate = (isInitialLoad = false) => {
         if (!isInitialLoad && !validateInputs()) return;
         const lastDateStr = DOM.lastReadingDateEl.value, nextDateStr = DOM.nextReadingDateEl.value, lastReadingVal = DOM.lastReadingValueEl.value, currentReadingVal = DOM.currentReadingValueEl.value, kwhPriceVal = DOM.kwhPriceEl.value;
@@ -305,10 +303,18 @@
         DOM.dailyUpdateValueEl.addEventListener('input', () => { DOM.currentReadingValueEl.value = DOM.dailyUpdateValueEl.value; saveInputData(true); calculate(true); });
         [DOM.goalInput, DOM.lastReadingDateEl, DOM.nextReadingDateEl, DOM.lastReadingValueEl, DOM.kwhPriceEl].forEach(el => el.addEventListener('input', () => saveInputData(false)));
         
-        // BOTÃO SALVAR COM O AJUSTE DO MÊS DE FECHAMENTO
-        DOM.saveBtn.addEventListener('click', () => { 
+        // --- BOTÃO SALVAR COM A CORREÇÃO FINAL ---
+        DOM.saveBtn.addEventListener('click', () => {
+            // Adiciona a validação antes de qualquer outra ação
+            if (!validateInputs()) {
+                showNotification('Por favor, preencha todos os dados corretamente antes de salvar.', true);
+                switchView('input'); // Leva o usuário de volta ao formulário para corrigir
+                return;
+            }
+
             const closingDate = new Date(DOM.nextReadingDateEl.value + 'T00:00:00');
             const label = (closingDate.getFullYear() + '-' + ("0" + (closingDate.getMonth() + 1)).slice(-2));
+            
             const saveAction = () => { 
                 const history = Utils.getStoredData(CONSTANTS.STORAGE_KEYS.HISTORY, []); 
                 const finalReading = parseFloat(DOM.currentReadingValueEl.value); 
@@ -335,6 +341,7 @@
                 switchView('input'); 
                 showNotification(`Fatura de ${label.replace(/-/g, '/')} salva!`); 
             }; 
+            
             const history = Utils.getStoredData(CONSTANTS.STORAGE_KEYS.HISTORY, []); 
             const existingIndex = history.findIndex(item => item.label === label); 
             if (existingIndex > -1) { 
