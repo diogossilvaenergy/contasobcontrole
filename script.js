@@ -240,7 +240,36 @@
 
     const renderHistoryTable = () => { const history = Utils.getStoredData(CONSTANTS.STORAGE_KEYS.HISTORY, []); if (history.length === 0) { DOM.historyContent.classList.add('hidden'); DOM.historyEmptyState.classList.remove('hidden'); return; } DOM.historyContent.classList.remove('hidden'); DOM.historyEmptyState.classList.add('hidden'); DOM.historyTableContainer.innerHTML = ''; const table = document.createElement('table'); table.className = 'history-table'; table.innerHTML = `<thead><tr><th>Mês</th><th>Valor</th><th>Consumo</th><th>Ações</th></tr></thead><tbody>${history.map(item => `<tr class="border-gray-700"><td data-label="Mês">${item.label.replace('-', '/')}</td><td data-label="Valor">${Utils.formatCurrency(item.value)}</td><td data-label="Consumo">${item.kwh} kWh</td><td><button class="action-btn edit-btn" data-id="${item.label}">Editar</button><button class="action-btn delete-btn" data-id="${item.label}">Excluir</button></td></tr>`).join('')}</tbody>`; DOM.historyTableContainer.appendChild(table); };
     const checkConsumptionAlert = () => { const history = Utils.getStoredData(CONSTANTS.STORAGE_KEYS.HISTORY, []); if (history.length < 1) { DOM.alertCard.classList.add('hidden'); return; } history.sort((a, b) => a.label.localeCompare(b.label)); const lastBill = history[history.length - 1]; if (state.currentPredictedBill > lastBill.value * CONSTANTS.CONSUMPTION_ALERT_THRESHOLD) { const percentageDiff = ((state.currentPredictedBill / lastBill.value) - 1) * 100; DOM.alertMessage.textContent = `Sua previsão está ${percentageDiff.toFixed(0)}% maior que sua última fatura (${Utils.formatCurrency(lastBill.value)}).`; DOM.alertCard.classList.remove('hidden'); } else { DOM.alertCard.classList.add('hidden'); } };
-    const updateDashboardComparisons = () => { const history = Utils.getStoredData(CONSTANTS.STORAGE_KEYS.HISTORY, []); history.sort((a, b) => a.label.localeCompare(b.label)); const prediction = state.currentPredictedBill; if (prediction === 0 || history.length === 0) { DOM.comparisonLastMonthValue.textContent = 'N/A'; DOM.comparisonLastMonthIndicator.textContent = 'Faltam dados'; DOM.comparisonLastMonthIndicator.className = ''; return; }; const lastMonthBill = history[history.length - 1]; DOM.comparisonLastMonthValue.textContent = Utils.formatCurrency(lastMonthBill.value); const diff = ((prediction / lastMonthBill.value) - 1) * 100; if (Math.abs(diff) < 1) { DOM.comparisonLastMonthIndicator.className = 'indicator'; DOM.comparisonLastMonthIndicator.innerHTML = `<span>↔️</span> Estável`; } else if (diff > 0) { DOM.comparisonLastMonthIndicator.className = 'indicator indicator-up'; DOM.comparisonLastMonthIndicator.innerHTML = `<span>↑</span> ${diff.toFixed(0)}% maior`; } else { DOM.comparisonLastMonthIndicator.className = 'indicator indicator-down'; DOM.comparisonLastMonthIndicator.innerHTML = `<span>↓</span> ${Math.abs(diff).toFixed(0)}% menor`; } };
+    
+    // FUNÇÃO COMPARATIVO CORRIGIDA
+    const updateDashboardComparisons = () => {
+        const history = Utils.getStoredData(CONSTANTS.STORAGE_KEYS.HISTORY, []);
+        history.sort((a, b) => a.label.localeCompare(b.label));
+        const prediction = state.currentPredictedBill;
+
+        if (prediction === 0 || history.length < 1) {
+            DOM.comparisonLastMonthValue.textContent = 'N/A';
+            DOM.comparisonLastMonthIndicator.textContent = 'Faltam dados';
+            DOM.comparisonLastMonthIndicator.className = '';
+            return;
+        };
+
+        const lastMonthBill = history[history.length - 1];
+        DOM.comparisonLastMonthValue.textContent = Utils.formatCurrency(lastMonthBill.value);
+        const diff = ((prediction / lastMonthBill.value) - 1) * 100;
+
+        if (Math.abs(diff) < 1) {
+            DOM.comparisonLastMonthIndicator.className = 'indicator';
+            DOM.comparisonLastMonthIndicator.innerHTML = `<span>↔️</span> Estável`;
+        } else if (diff > 0) {
+            DOM.comparisonLastMonthIndicator.className = 'indicator indicator-up';
+            DOM.comparisonLastMonthIndicator.innerHTML = `<span>↑</span> ${diff.toFixed(0)}% maior`;
+        } else {
+            DOM.comparisonLastMonthIndicator.className = 'indicator indicator-down';
+            DOM.comparisonLastMonthIndicator.innerHTML = `<span>↓</span> ${Math.abs(diff).toFixed(0)}% menor`;
+        }
+    };
+
     const renderAllHistory = () => { renderHistoryChart(); renderHistoryTable(); };
     const resetPastBillModal = () => { DOM.pastBillModalTitle.textContent = 'Adicionar Fatura Passada'; DOM.editingBillId.value = ''; DOM.pastBillMonthEl.value = ''; DOM.pastBillValueEl.value = ''; DOM.pastBillKwhEl.value = ''; DOM.pastBillMonthEl.disabled = false; DOM.modalError.textContent = ''; };
     
@@ -303,12 +332,10 @@
         DOM.dailyUpdateValueEl.addEventListener('input', () => { DOM.currentReadingValueEl.value = DOM.dailyUpdateValueEl.value; saveInputData(true); calculate(true); });
         [DOM.goalInput, DOM.lastReadingDateEl, DOM.nextReadingDateEl, DOM.lastReadingValueEl, DOM.kwhPriceEl].forEach(el => el.addEventListener('input', () => saveInputData(false)));
         
-        // --- BOTÃO SALVAR COM A CORREÇÃO FINAL ---
         DOM.saveBtn.addEventListener('click', () => {
-            // Adiciona a validação antes de qualquer outra ação
             if (!validateInputs()) {
                 showNotification('Por favor, preencha todos os dados corretamente antes de salvar.', true);
-                switchView('input'); // Leva o usuário de volta ao formulário para corrigir
+                switchView('input');
                 return;
             }
 
