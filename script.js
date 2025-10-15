@@ -163,7 +163,7 @@
         const dailyAvgKwh = (consumedKwh > 0 && daysPassed > 0) ? consumedKwh / daysPassed : 0;
         const predictedKwh = dailyAvgKwh * totalDaysInCycle;
         const predictedBill = predictedKwh * kwhPrice;
-        const daysLeft = Math.max(0, totalDaysInCycle - daysPassedRaw);
+        const daysLeft = Math.max(0, totalDaysInCycle - daysDiff);
         
         state.currentPredictedBill = predictedBill;
         state.currentPartialBill = currentBill;
