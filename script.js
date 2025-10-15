@@ -36,6 +36,7 @@
         currentBillEl: document.getElementById('current-bill'),
         dailyAvgEl: document.getElementById('daily-avg'),
         daysLeftEl: document.getElementById('days-left'),
+        cycleTotalDaysInfoEl: document.getElementById('cycle-total-days-info'), // NOVO ELEMENTO
         alertCard: document.getElementById('alert-card'),
         alertMessage: document.getElementById('alert-message'),
         historyCard: document.getElementById('history-card'),
@@ -144,7 +145,7 @@
     const calculate = (isInitialLoad = false) => {
         if (!isInitialLoad && !validateInputs()) return;
         const lastDateStr = DOM.lastReadingDateEl.value, nextDateStr = DOM.nextReadingDateEl.value, lastReadingVal = DOM.lastReadingValueEl.value, currentReadingVal = DOM.currentReadingValueEl.value, kwhPriceVal = DOM.kwhPriceEl.value;
-        if (!lastDateStr || !lastReadingVal || !kwhPriceVal) { updateUI(0, 0, 0, 0, 0, 0); return; }
+        if (!lastDateStr || !lastReadingVal || !kwhPriceVal) { updateUI(0, 0, 0, 0, 0, 0, 0); return; }
 
         const lastReading = parseFloat(lastReadingVal), currentReading = parseFloat(currentReadingVal), kwhPrice = parseFloat(kwhPriceVal);
         
@@ -154,8 +155,6 @@
         const day = String(today.getDate()).padStart(2, '0');
         const todayStr = `${year}-${month}-${day}`;
 
-        // --- ALTERAÇÃO A PEDIDO: Ignorar o dia inicial na contagem da duração do ciclo ---
-        // A duração do ciclo agora é a diferença de dias, que por natureza já exclui o dia inicial da contagem de "dias de consumo".
         const totalDaysInCycle = nextDateStr ? Math.max(1, Utils.daysBetween(lastDateStr, nextDateStr)) : 30;
         
         const daysDiff = Utils.daysBetween(lastDateStr, todayStr);
@@ -174,7 +173,7 @@
         state.currentPredictedBill = predictedBill;
         state.currentPartialBill = currentBill;
         
-        updateUI(currentBill, predictedBill, dailyAvgKwh, daysLeft, currentReading || lastReading, predictedKwh);
+        updateUI(currentBill, predictedBill, dailyAvgKwh, daysLeft, currentReading || lastReading, predictedKwh, totalDaysInCycle);
         checkConsumptionAlert();
         updateDashboardComparisons();
         updateGoalCard(consumedKwh);
@@ -195,7 +194,7 @@
         window.requestAnimationFrame(step);
     };
 
-    const updateUI = (currentBill, predictedBill, dailyAvgKwh, daysLeft, lastReading, predictedKwh) => {
+    const updateUI = (currentBill, predictedBill, dailyAvgKwh, daysLeft, lastReading, predictedKwh, totalDaysInCycle) => {
         const {bill, partial, avg, days, reading} = state.previousValues;
         animateValue(DOM.predictedBillMainEl, bill, predictedBill, 500, val => Utils.formatCurrency(val));
         animateValue(DOM.currentBillEl, partial, currentBill, 500, val => Utils.formatCurrency(val));
@@ -205,6 +204,13 @@
         DOM.predictedConsumptionEl.textContent = `Estimativa de ${predictedKwh.toFixed(0)} kWh no ciclo`;
         DOM.lastRegisteredReading.textContent = lastReading ? `${lastReading} kWh` : '-';
         
+        // ATUALIZA O NOVO TEXTO
+        if (totalDaysInCycle > 0) {
+            DOM.cycleTotalDaysInfoEl.textContent = `de ${totalDaysInCycle} dias neste ciclo`;
+        } else {
+            DOM.cycleTotalDaysInfoEl.textContent = '';
+        }
+
         state.previousValues = { bill: predictedBill, partial: currentBill, avg: dailyAvgKwh, days: daysLeft, reading: lastReading };
     };
 
