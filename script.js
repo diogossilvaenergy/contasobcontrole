@@ -148,20 +148,18 @@
 
         const lastReading = parseFloat(lastReadingVal), currentReading = parseFloat(currentReadingVal), kwhPrice = parseFloat(kwhPriceVal);
         
-        // --- INÍCIO DA CORREÇÃO DE FUSO HORÁRIO ---
-        // Obtém a data atual no fuso horário local do utilizador para evitar a mudança de dia prematura.
         const today = new Date();
         const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0'); // Os meses começam no 0
+        const month = String(today.getMonth() + 1).padStart(2, '0');
         const day = String(today.getDate()).padStart(2, '0');
         const todayStr = `${year}-${month}-${day}`;
-        // --- FIM DA CORREÇÃO DE FUSO HORÁRIO ---
 
+        // --- ALTERAÇÃO A PEDIDO: Ignorar o dia inicial na contagem da duração do ciclo ---
+        // A duração do ciclo agora é a diferença de dias, que por natureza já exclui o dia inicial da contagem de "dias de consumo".
         const totalDaysInCycle = nextDateStr ? Math.max(1, Utils.daysBetween(lastDateStr, nextDateStr)) : 30;
         
         const daysDiff = Utils.daysBetween(lastDateStr, todayStr);
         
-        // Para o cálculo da média, o primeiro dia deve contar como 1 para evitar a divisão por zero.
         const daysForAvgCalc = daysDiff <= 0 ? 1 : daysDiff;
         const daysPassed = Math.min(daysForAvgCalc, totalDaysInCycle);
         
@@ -171,7 +169,6 @@
         const predictedKwh = dailyAvgKwh * totalDaysInCycle;
         const predictedBill = predictedKwh * kwhPrice;
         
-        // Para os dias restantes, usamos a diferença real de dias.
         const daysLeft = Math.max(0, totalDaysInCycle - daysDiff);
         
         state.currentPredictedBill = predictedBill;
