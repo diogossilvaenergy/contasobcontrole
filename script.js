@@ -141,29 +141,30 @@
     }
 };
     
-    const calculate = (isInitialLoad = false) => {
-        if (!isInitialLoad && !validateInputs()) return;
-        const lastDateStr = DOM.lastReadingDateEl.value, nextDateStr = DOM.nextReadingDateEl.value, lastReadingVal = DOM.lastReadingValueEl.value, currentReadingVal = DOM.currentReadingValueEl.value, kwhPriceVal = DOM.kwhPriceEl.value;
-        if (!lastDateStr || !lastReadingVal || !kwhPriceVal) { updateUI(0, 0, 0, 0, 0, 0); return; }
+    const totalDaysInCycle = nextDateStr ? Math.max(1, Utils.daysBetween(lastDateStr, nextDateStr)) : 30;
 
-        const lastReading = parseFloat(lastReadingVal), currentReading = parseFloat(currentReadingVal), kwhPrice = parseFloat(kwhPriceVal);
-        const todayStr = new Date().toISOString().split('T')[0];
-
-        const totalDaysInCycle = nextDateStr ? Math.max(1, Utils.daysBetween(lastDateStr, nextDateStr)) : 30;
+        // --- CORREÇÃO DEFINITIVA DA CONTAGEM DE DIAS ---
         
-        // --- INÍCIO DA CORREÇÃO FINAL DA CONTAGEM DE DIAS ---
+        // Esta variável calcula o número REAL de dias completos que se passaram.
+        // No primeiro dia, o valor será 0. No segundo, 1, e assim por diante.
         const daysDiff = Utils.daysBetween(lastDateStr, todayStr);
-        const daysPassedRaw = daysDiff <= 0 ? 1 : daysDiff;
-        // --- FIM DA CORREÇÃO FINAL DA CONTAGEM DE DIAS ---
 
-        const daysPassed = Math.min(daysPassedRaw, totalDaysInCycle);
-        
+        // Para calcular a MÉDIA, precisamos que o primeiro dia conte como 1 (para não dividir por zero).
+        // Usamos uma variável separada para isso.
+        const daysForAvgCalc = daysDiff <= 0 ? 1 : daysDiff;
+        const daysPassed = Math.min(daysForAvgCalc, totalDaysInCycle);
+
+        // Agora, os cálculos da fatura...
         const consumedKwh = (currentReading >= lastReading) ? currentReading - lastReading : 0;
         const currentBill = consumedKwh * kwhPrice;
         const dailyAvgKwh = (consumedKwh > 0 && daysPassed > 0) ? consumedKwh / daysPassed : 0;
         const predictedKwh = dailyAvgKwh * totalDaysInCycle;
         const predictedBill = predictedKwh * kwhPrice;
+
+        // E para os DIAS RESTANTES, usamos a variável com o valor real de dias passados (daysDiff).
         const daysLeft = Math.max(0, totalDaysInCycle - daysDiff);
+        
+        // --- FIM DA CORREÇÃO ---
         
         state.currentPredictedBill = predictedBill;
         state.currentPartialBill = currentBill;
